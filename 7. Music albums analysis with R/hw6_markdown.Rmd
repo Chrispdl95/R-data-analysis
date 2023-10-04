@@ -1,0 +1,304 @@
+---
+title: "Final exam homework"
+author: "PAPADOPOULOS CHRISTOS"
+date: "2023-01-22"
+output: html_document
+---
+
+
+### Preview the data and preproccesing
+```{r}
+#import the dataset
+path <- "C:/Users/Chrispdl/Desktop/edav/hw6 (1)/album.csv"
+
+albums <- read.csv(path)
+```
+
+```{r}
+# calculating the product of dimensions of dataframe 
+totalcells = prod(dim(albums))
+print("Total number of cells ")
+print(totalcells)
+
+# calculating the number of cells with na
+missingcells = sum(is.na(albums))
+print("Missing value cells")
+print(missingcells)
+
+#Apply na.omit() function
+albums <- na.omit(albums) 
+```
+
+
+```{r}
+#Split the 3rd column of albums df in Year and Title
+# load dplyr and tidyr library
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+
+#split the column album to title and year
+albums <-albums %>%
+  separate(album,c('Year','Title'),' ',extra='merge')%>%
+  mutate(Year= gsub('\\(',"",Year))%>%
+  mutate(Year= gsub('\\)',"",Year))
+
+total_albums <- nrow(albums)
+total_albums
+total_artists <- length((unique(albums$artist)))
+total_artists
+
+```
+
+
+```{r}
+#split the column genre to 5 genres (primary ,secondary etc.)
+library(splitstackshape)
+albums<- cSplit(albums,1,sep=',',direction='wide')
+albums <- albums%>%
+  select(-genre_6,-genre_7,-genre_8)%>%
+  arrange(Title)
+
+```
+
+### [1.a]τo πλήθος των album ανά genre (υπόθεση: κάθε album ανήκει μόνο στο πρωτεύον genre)
+```{r}
+count_of_albums_genre_1<- data.frame(table(albums$genre_1))%>%
+  arrange(desc(Freq))
+count_of_albums_genre_1
+class(count_of_albums_genre_1)
+top_five_genres <- count_of_albums_genre_1%>%
+  slice(1:5)
+top_five_genres
+
+plot_a <- ggplot(data= albums %>% group_by(genre_1),aes(genre_1))+geom_bar(stat = 'count')+theme_minimal()+
+  labs(title='Number of albums per Genre',subtitle = 'Albums belong to the primary genre',x='Genre',y='Number of  albums')+
+  theme(axis.text.x = element_text(angle = 60, vjust = 0.5, hjust=0.5))
+
+plot_a
+```
+### we notice that 1 type of genre does not exist in any album as primary
+
+### [1.b] To πλήθος των album ανά genre (υπόθεση: κάθε album ανήκει σε όλα τα genres του)
+
+```{r}
+# δημιουργουμε ένα dataframe  μία στήλη που έχει τύπο του genre(classical , blues κτλπ) και μία στήλη για τον αριθμό του genre(προτεύων , δευτερεύων κτλπ.)
+count_of_albums <- albums%>%
+  gather(genre_1,genre_2,genre_3,genre_4,genre_5,key='num_of_genre',value = 'genre')%>%
+  arrange(Title)%>%
+  na.omit()
+
+
+#I find for each type of genre how many albums there are
+count_of_albums_genre_all <- count_of_albums %>%
+  group_by(genre)%>%
+  summarize(frequency = n())
+count_of_albums_genre_all
+
+plot_b <- ggplot(data= count_of_albums %>%
+                   group_by(genre),aes(genre))+geom_bar(stat ='count')+theme_light()+
+  labs(title='Number of albums per Genre',subtitle = 'Albums belong to every genre',x='Genre',y='Number of  albums')+
+  theme(axis.text.x = element_text(angle = 60, vjust = 0.5, hjust=0.4))
+  
+
+plot_b
+```
+
+### [1.c] To πλήθος των artist ανά genre (υπόθεση: κάθε artist ανήκει μόνο στο πρωτεύον genre)
+
+```{r}
+
+count_of_artist_genre_1 <- albums%>%
+  select(artist,genre_1)%>%           #keep only aritst and 1st genre
+  distinct()%>%                      #remove duplicates cause artists have many albums
+  group_by(genre_1)%>%
+  summarize(count= n())
+
+count_of_artist_genre_1
+
+plot_c <- ggplot(data= albums%>%
+                   select(artist,genre_1)%>%           #keep only aritst and 1st genre
+                   distinct()%>%                      #remove duplicates cause artists have many albums
+                   group_by(genre_1),aes(genre_1))+geom_bar(stat='count')+theme_minimal()+
+  labs(title='Number of artists per Genre',subtitle = 'Artists belong to the primary genre',x='Genre',y='Number of  albums')+
+  theme(axis.text.x = element_text(angle = 60, vjust = 0.5, hjust=0.4))
+  
+
+plot_c
+```
+
+### [1.d] τo πλήθος των artist ανά genre (υπόθεση: κάθε artist ανήκει σε όλα τα genres του)
+
+```{r}
+count_of_artist_genre_all <- count_of_albums%>%
+  select(-Title,-Year)%>%   #remove the albums factor(year and title)
+  distinct()%>%             #keep only unique rows
+  group_by(genre)%>%
+  summarise(count=n())
+count_of_artist_genre_all
+
+plot_d <- ggplot(data=count_of_albums%>%
+                   select(-Title,-Year)%>%   
+                   distinct()%>%            
+                   group_by(genre),aes(genre))+geom_bar(stat='count')+theme_minimal()+
+  labs(title='Number of artists per Genre',subtitle = 'Artists belong to every genre',x='Genre',y='Number of  albums')+
+  theme(axis.text.x = element_text(angle = 60, vjust = 0.5, hjust=0.2))
+
+plot_d
+
+```
+
+### [2]Δώστε την κατανομή των album ανά χρονιά
+
+```{r}
+year <- albums%>%
+  group_by(Year)%>%
+  summarize(count=n())%>%
+  arrange(desc(count))
+year
+
+#visualize
+library(ggplot2)
+year_plot <- ggplot(albums,aes(x=Year))+geom_bar(color='black',fill='lightblue')+
+  labs(title='Number of albums published per Year',x='Year',y='Total albums')+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+year_plot
+
+```
+
+
+
+### [3]Δώστε τις κατανομές των album των top 5 genre στο χρόνο (στο γράφημα να φαίνονται τα genre με διαφορετικά χρώματα).
+
+```{r}
+#Στο συγκεκριμένο ερώτημα θεωρούμε ως genre  του album το πρωτεύον genre του artist.
+
+year_genre_top5 <- albums%>%
+  filter(genre_1 %in% top_five_genres$Var1)%>%
+  select(Year,Title,genre_1)
+year_genre_top5_plot <- ggplot(year_genre_top5,aes(x=Year))+geom_bar(aes(color=genre_1))+
+  labs(title='Number of albums published per Year for the top 5 genres')+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+year_genre_top5_plot
+```
+
+ 
+### [4]μελετήστε τις σχέσεις ανάμεσα στα genres, δηλαδή ποια ζεύγη έχουν υψηλή συσχέτιση. Ας εστιάσουμε μόνο στο πρωτεύον και δευτερεύον genre των artist 
+
+```{r}
+
+# create artist dataframe
+artists<- albums %>%
+  select(-Title,-Year,-genre_3,-genre_4,-genre_5)%>%
+  distinct_all()
+artists$genre_2[is.na(artists$genre_2)]<-artists$genre_1[is.na(artists$genre_2)]  
+
+#we observe that now we have a df with 3694 artists.(instead of 3692)
+
+artists_2<- artists%>%
+  select(-artist)%>%
+  filter(genre_1 != genre_2)
+
+table_artists <- table(artists_2$genre_1,artists_2$genre_2)
+
+
+mosaicplot(table_artists, main='Genres Mosaic Plot',
+           sub='Correlarion between the primary and secondary genre',
+           xlab='Genre',
+           ylab='Genre',
+           color='skyblue',
+           border='chocolate',
+           cex.axis = .5,
+           dir=c('v','h'),
+           las=2)
+
+```
+
+
+### [5] Χρησιμοποιήστε το dataset world από τη βιβλιοθήκη spData. Πάρτε τα ονόματα των χωρών και για κάθε χώρα βρείτε ποιοι τίτλοι album την περιέχουν. Προσθέστε αυτή την πληροφορία σε μια νέα στήλη για το κάθε album. Αν στον τίτλο ενός album υπάρχουν πάνω από μια χώρες, κρατήστε μόνο μια (οποιαδήποτε). Προχωρήστε στην παραγωγή χωροπληθικού χάρτη για την οπτικοποίηση του πλήθους των album ανά χώρα (δείτε σχετικά κεφάλαια του βιβλίου "Geocomputation with R")
+```{r}
+library(spData)
+library(sf)
+world <- world
+world
+class(world)
+
+countries_names <- world$name_long
+
+x <- sapply(countries_names, function(x) grepl(paste0("\\b",x,"\\b"),albums$Title))
+
+# Define a function to check if a row has at least one true value
+has_true <- function(y) {
+  if (any(y)) {
+    return(colnames(x)[which(y)])
+  } else {
+    return(NA)
+  }
+}
+
+# Apply the function to each row of the matrix
+country_in_the_Title <- apply(x, 1, has_true)
+
+#create a new column in albums with the name of the country the title includes
+albums_final <- cbind(albums,country_in_the_Title)
+country_in_the_Title <- as.data.frame(country_in_the_Title)
+country_in_the_Title <- country_in_the_Title%>%
+  na.omit()%>%
+  group_by(country_in_the_Title)%>%
+  summarise(count=n())
+colnames(country_in_the_Title)<- c('name_long','count')
+# Load dplyr package
+library(dplyr)
+library(tmap)
+# Using dplyr - left join multiple columns
+country_final <- country_in_the_Title  %>% merge(world[,'name_long'], 
+                             by='name_long')
+
+country_final <- st_as_sf(country_final)
+class(country_final)
+
+
+tmap_options(bg.color='lightblue')
+tm_shape(country_final)+tm_polygons('count',pallette='div',title='Number of albums')+
+  tm_layout(frame=FALSE,main.title= 'Country names in albums Title',main.title.color ='red')
+
+```
+
+
+## [6] Δώστε τρείς επιπλέον δικές σας ενδιαφέρουσες οπτικοποιήσεις των δεδομένων.
+```{r}
+artists_with_most_albums <- albums %>%
+  select(artist,Title,genre_1)%>%
+  group_by(artist)%>%
+  summarize(num_of_albums= n())%>%
+  arrange(desc(num_of_albums))%>%
+  slice(1:10)
+
+artists_with_most_albums_final<- merge(x=artists_with_most_albums,y=albums, by='artist',all.x = TRUE)%>%
+  select(artist,num_of_albums,genre_1)%>%
+  distinct()
+
+
+artists_with_most_albums_final %>% ggplot(aes(x= factor(artist),y=num_of_albums,fill=genre_1))+
+  geom_bar(stat='identity')+
+  labs(x='Artist',y='Number of albums')+ guides(fill=guide_legend(title="Primary genre"))
+
+#we observe the 10 artists with most albums published and we see that 8 of them are from the Pop-rock scene.
+
+```
+
+```{r}
+artists_with_most_albums_rap <- albums %>%
+  filter(genre_1 == 'Rap')%>%
+  select(artist,Title)%>%
+  group_by(artist)%>%
+  summarize(num_of_albums= n())%>%
+  arrange(desc(num_of_albums))%>%
+  slice(1:10)
+
+artists_with_most_albums_rap  %>% ggplot(aes(x= factor(artist),y=num_of_albums))+
+  geom_bar(stat='identity')+
+  labs(x='Artist',y='Number of albums')
+#here is Tupac
+
+```

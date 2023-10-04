@@ -1,0 +1,140 @@
+---
+title: "Homework 6 flex-dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    social: menu
+    source_code: embed
+runtime: shiny
+---
+
+
+
+```{r global, include=FALSE}
+#import the dataset
+path <- "C:/Users/Chrispdl/Desktop/edav/hw6 (1)/album.csv"
+
+albums <- read.csv(path)
+
+# calculating the product of dimensions of dataframe 
+totalcells = prod(dim(albums))
+print("Total number of cells ")
+print(totalcells)
+
+# calculating the number of cells with na
+missingcells = sum(is.na(albums))
+print("Missing value cells")
+print(missingcells)
+
+#Apply na.omit() function
+albums <- na.omit(albums) 
+
+#Split the 3rd column of albums df in Year and Title
+# load dplyr and tidyr library
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+
+#split the column album to title and year
+albums <-albums %>%
+  separate(album,c('Year','Title'),' ',extra='merge')%>%
+  mutate(Year= gsub('\\(',"",Year))%>%
+  mutate(Year= gsub('\\)',"",Year))
+
+total_albums <- nrow(albums)
+total_albums
+total_artists <- length((unique(albums$artist)))
+total_artists
+
+
+#split the column genre to 5 genres (primary ,secondary etc.)
+library(splitstackshape)
+albums<- cSplit(albums,1,sep=',',direction='wide')
+albums <- albums%>%
+  select(-genre_6,-genre_7,-genre_8)%>%
+  arrange(Title)
+
+```
+Page 1
+===================================== 
+
+Column
+-----------------------------------------------------------------------
+
+### Albums 
+
+    
+```{r}
+DT::datatable(albums%>% select(artist,Year,Title,genre_1), options = list(
+  pageLength = 100
+))
+```
+
+Page 2
+===================================== 
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+ Select the primary genre 
+ 
+```{r}
+selectInput('genre_1', 'Primary Genre:', 
+            choices= c('R&B','Latin','Jazz','Pop-Rock','Vocal','Electronic','Rap'),
+            selected='Pop-Rock')
+    
+```
+
+Column
+-----------------------------------------------------------------------
+
+The top 10 artists with most albums per genre
+
+```{r}
+renderPlot({artists_with_most_albums_rnb <- albums %>%
+  filter(genre_1 == toString(input$genre_1))%>%
+  select(artist,Title)%>%
+  group_by(artist)%>%
+  summarize(num_of_albums= n())%>%
+  arrange(desc(num_of_albums))%>%
+  slice(1:10)
+
+artists_with_most_albums_rnb %>% ggplot(aes(x= factor(artist),y=num_of_albums))+
+  geom_bar(stat='identity')+
+  labs(x='Artist',y='Number of albums')+theme_minimal()
+  
+  })
+
+```
+
+
+Page 3
+===================================== 
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+ Select the primary genre 
+ 
+```{r}
+selectInput('genre', 'Primary Genre:', 
+            choices= c('R&B','Latin','Jazz','Pop-Rock','Vocal','Electronic','Rap'),
+            selected='Pop-Rock')
+    
+```
+
+Column
+-----------------------------------------------------------------------
+
+Distribution of number of albums published per genre
+
+```{r}
+library(ggplot2)
+renderPlot({
+year_plot <- ggplot(albums%>% filter(genre_1 == toString(input$genre)),aes(x=Year))+geom_bar(color='black',fill='lightblue')+
+  labs(title='Number of albums published per Year',x='Year',y='Total albums')+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+year_plot
+  
+  })
+
+```
+

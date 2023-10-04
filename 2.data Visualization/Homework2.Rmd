@@ -1,0 +1,111 @@
+---
+title: "Homework 2 ggplot2"
+author: "Papadopoulos Christos"
+date: "2022-11-02"
+output: html_document 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exercise 1
+```{r , include=FALSE}
+library(tidyverse)
+library(ggplot2)
+path = "C:/Users/Chrispdl/Desktop/edav/hw2/mcdonalds.csv"
+mac <- read.csv(path)
+```
+
+### Preview the data 
+
+```{r}
+head(queen) 
+summary(queen)
+```
+ 
+###  1a) Bar plot num of tracks per album
+```{r}
+barplot<-ggplot(data=queen, aes(x=album_name)) +
+  geom_bar()+
+  labs(title='Bar plot of tracks per album')+
+  theme(axis.text.x = element_text(angle = 45,hjust=1))
+barplot
+```
+
+### 1b)  Histogram of tempo distribution
+```{r}
+histogram <- ggplot(data=queen, aes(x=tempo))+
+  geom_histogram(bins=15,aes(fill=mode))+
+  labs(title='Histogram of Tempo distribution')
+histogram
+``` 
+
+### 1c) Boxplot of tempo per album
+
+```{r}
+boxplot <- ggplot(data=queen, aes(x=album_name, y= tempo))+
+  geom_boxplot(fill='lightblue')+
+  labs(title='Boxplot of Tempo per album')+
+  theme(axis.text.x = element_text(angle = 45,hjust=1))
+boxplot
+```
+
+### 1d) Scatterplots of danceability and energy per album
+
+``` {r}
+scatter <- ggplot(data=queen, aes(x=energy, y=danceability))+
+  geom_point(color="lightblue",aes(size=tempo)) + 
+  facet_wrap(~ album_name)+
+  labs(title='Scatterplots of danceability and energy per album')
+  
+scatter  
+
+```
+
+### 1e) 2 Plots of my choice
+```{r}
+scatter2 <- ggplot(data=queen, aes(x=danceability, y=track_popularity))+
+  geom_point(color="lightblue",aes(size=tempo)) + 
+  labs(title='Scatterplot of danceability and track popularity')
+scatter2
+
+scatter3 <- ggplot(data=queen, aes(x=valence, y=energy))+ 
+  geom_point(aes(color=track_popularity))+
+  labs(title='Scatterplot of valence and energy')
+  
+scatter3
+```
+
+# Exercise 2
+```{r include=FALSE}
+mac<- read.csv(file = 'mcdonalds.csv')
+```
+
+###Preview the data 
+```{r}
+head(mac)
+summary(mac)
+```
+
+### Create a new dataframe with only complete observations
+```{r}
+complete_mac <- mac[complete.cases(mac),]
+```
+
+### Create a new column with price of Big Mc in dollars $
+```{r}
+final_mac <- complete_mac %>%
+  transmute(country=name, price= local_price/dollar_ex,GDP_dollar= GDP_dollar)
+```
+
+
+### Scatterplot of  countries' GDP and price of Big Mc in dollars
+```{r}
+country_GDP_price_of_bigMc <- ggplot(data= final_mac, aes(x=GDP_dollar ,y=price))+
+  geom_point()+
+  labs(title='Scatterplot GDP - price of BigMac')
+country_GDP_price_of_bigMc 
+```
+
+

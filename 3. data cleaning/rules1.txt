@@ -1,0 +1,14 @@
+#Positive rule
+Petal.Length >=0
+Sepal.Length >=0
+Petal.Width >=0
+Sepal.Width >=0
+
+#numerical rules
+Petal.Length >= 2* Petal.Width
+Sepal.Length <=30
+Sepal.Length >= Petal.Length 
+Sepal.Width >= Petal.Width 
+
+#categorical rules
+Species %in% c("versicolor","virginica","setosa")

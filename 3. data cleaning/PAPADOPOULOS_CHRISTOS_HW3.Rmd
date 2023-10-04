@@ -1,0 +1,159 @@
+---
+title: "Homework 3"
+author: "Papadopoulos Christos"
+date: "2022-10-27"
+output: html_document
+---
+## 1A)
+#### Download and preview the data
+```{r }
+library(tidyverse)
+dict_url <- "https://raw.githubusercontent.com/edwindj/datacleaning/master/data/dirty_iris.csv"
+if (!file.exists('dirty_iris.csv'))download.file(dict_url,'dirty_iris.csv')
+data <- read_csv('dirty_iris.csv')
+```
+
+#### Check that strings are not converted to factor.
+```{r}
+data
+str(data)
+is.factor(data)
+
+```
+
+## 1B)
+
+#### Calculate the number and percentage of observations that are complete
+```{r}
+data_na=apply(X = is.na(data), MARGIN = 1, FUN = sum)
+data_na_sum <- sum(data_na != 0)  
+data_na_sum
+nrow(data)
+perc_compl_obser= (nrow(data)-data_na_sum)/nrow(data)
+perc_compl_obser
+
+```
+
+## 1C)
+
+#### Firstly i create a function is.special that finds special values and then i replace them with NA
+
+```{r}
+is.special <- function(x){
+  if (is.numeric(x)) !is.finite(x) else is.na(x)
+}
+
+data[sapply(data, is.special)== TRUE] <- NA
+```
+
+## 2A)
+
+#### Read the rules with editfiles 
+```{r include=FALSE}
+library(deducorrect)
+library(editrules)
+```
+```{r}
+E <- editfile("rules1.txt")
+E
+```
+## 2B)
+#### With violatedEdits i summarize how often each rule is broken 
+```{r}
+ve <- violatedEdits(E, data) #violated edits
+summary(ve)
+```
+
+
+## 2C)
+#### We filter the result of violatedEdits to find how often no rule is broken
+```{r}
+errors <- summary(ve)
+zeros_errors <- errors %>%
+  filter(errors==0)%>%
+  summarise(num_of_good_observations=freq)
+zeros_errors
+```
+
+## 2D)
+#### We do the same to find out which observations have too long petals
+```{r}
+df_ve <- as.data.frame.table(ve)
+colnames(df_ve) <- c('record','constraint','type')
+long_petals<- df_ve %>%
+  filter(constraint == 'num6',type== TRUE)%>%
+  summarise(record)
+long_petals
+```
+
+## 2E)
+#### By using boxplot we find outliers in sepal length and then we set the outliers to mean of the Sepal.Length column.
+
+```{r}
+boxplot.stats(data['Sepal.Length'])$out
+boxplot(data['Sepal.Length'],ylab='Sepal Length',notch=TRUE, varwidth= TRUE, main='Sepal length Boxplot')
+
+data$Sepal.Length[(data$Sepal.Length==73) |(data$Sepal.Length==0)|(data$Sepal.Length==49)] <-mean(data$Petal.Length,na.rm=TRUE)
+boxplot.stats(data['Sepal.Length'])$out
+
+```
+
+## 3A)
+#### Replace non positive values from Petal.Width with NA using correctWithRules 
+```{r}
+rules <- correctionRules(expression(if (is.na(Petal.Width)) Petal.Width<- NA 
+                                    else if(Petal.Width < 0) Petal.Width <-NA))
+x<-correctWithRules(rules,data)
+data <- x$corrected
+
+```
+
+## 3B)
+#### With localizeErrors we create a logical Dataframe which shows every observation and if it breaks any rule and then we replace all the true values in the original dataframe with NA.
+```{r}
+le <-  localizeErrors(E, data)$adapt #localize errors
+le
+data[le==TRUE] <- NA
+
+```
+
+## 4A)
+#### Use kNN imputation (VIM) to impute all missing values
+```{r}
+library(VIM)
+data_KNN <- kNN(data)%>%
+  select(1:5)
+```
+
+
+## 4B)
+#### Use sequential hotdeck imputation to impute Petal.Width by sorting the dataset on Species.
+```{r}
+data_hot1 <- hotdeck(data=data, variable= 'Petal.Width', ord_var= 'Species')%>%
+  select(1:5)
+library(diffdf)
+```
+
+#### Compare the imputed Petal.Width with the sequential hotdeck imputation method.
+
+```{r}
+compare_hot1_knn <-diffdf(data_hot1, data_KNN)$VarDiff_Petal.Width
+colnames(compare_hot1_knn) <- c('Variable','Diff_in_row','hotdeck_imput','knn_imput')
+compare_hot1_knn<- compare_hot1_knn%>%
+  mutate(abs_diff= abs(knn_imput - hotdeck_imput))
+compare_hot1_knn
+```
+
+## 4C)
+#### We do the same as before but now we sort the dataset on Species and Sepal.Length.
+```{r}
+data_hot2 <- hotdeck(data=data, variable= 'Petal.Width', ord_var= c('Species','Sepal.Length'))%>%
+  select(1:5)
+compare_hot2_knn <-diffdf(data_hot2, data_KNN)$VarDiff_Petal.Width
+colnames(compare_hot2_knn) <- c('Variable','Diff_in_row','hotdeck_imput','knn_imput')
+compare_hot2_knn<- compare_hot2_knn%>%
+  mutate(abs_diff= abs(knn_imput - hotdeck_imput))
+compare_hot2_knn
+```
+
+

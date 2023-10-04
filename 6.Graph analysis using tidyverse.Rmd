@@ -1,0 +1,142 @@
+---
+title: "Homework 5.B"
+author: "PAPADOPOULOS CHRISTOS"
+date: "2023-01-15"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Import necessary libraries and create a proximity matrix between the coutries
+```{r}
+library(tidyverse)
+library(cshapes)
+library(sf)
+
+cmap.2019 <- cshp(date=as.Date("2019-1-1"))
+validcmap <- st_make_valid(cmap.2019)
+capitals_distance <- distmatrix(date= as.Date('2019-1-1'),type='capdist')
+capitals_distance<- as.matrix(capitals_distance)
+# βιβλιοθήκη που δημιουργεί proximity matrices
+library(prioritizr)
+
+#create proximity matrix
+prox_matrix <- proximity_matrix(validcmap,0)
+prox_matrix <- as.matrix(prox_matrix)
+
+```
+
+```{r}
+df= NULL
+for (i in 1:nrow(validcmap)){
+  from_capital = validcmap$capname[i]
+  for (j in 1:ncol(prox_matrix)){
+    if (prox_matrix[i,j]==1){
+      to_capital= validcmap$capname[j]
+      distance= capitals_distance[i,j]
+      df= rbind(df, data.frame(from_capital,to_capital,distance))
+    }
+  }
+}
+
+head(df)
+```
+
+```{r}
+library(tidygraph)
+graph_df <- as_tbl_graph(df)
+graph_df
+
+```
+
+```{r}
+library(stringr)
+graph_df <- graph_df%>%
+  activate(nodes) %>%
+  mutate(
+    title = str_to_title(name),
+    label = str_replace_all(title, " ", "\n")
+  )
+graph_df
+```
+
+```{r}
+capitals <- graph_df%>%
+  activate(nodes)%>%
+  pull(title)
+
+```
+
+### Provide a graph with the network you created (experiment with the various ggraph layouts for the aesthetically best result for you). In in any case to display at least the names of the nodes. You can use the distance between two nodes to color or set the thickness of the edges that connect them.
+
+```{r}
+# Visualizing
+library(ggraph)
+graph_df %>%
+  ggraph(layout = "kk") +
+  geom_node_text(aes(label = label), size = 1.5,repel=TRUE) +
+  geom_edge_diagonal(aes(color=distance), alpha = 0.4)
+
+```
+
+
+### Shortest path between 'Athens' and 'Copenhagen' when the weight is the distance between capitals
+
+
+```{r}
+from <- which(capitals=='Athens')
+from
+to <- which(capitals=='Copenhagen')
+to
+shortest <- graph_df %>%
+  morph(to_shortest_path,from,to,weights= distance)
+
+shortest <- shortest %>%
+  mutate(selected_node = TRUE) %>%
+  activate(edges) %>%
+  mutate(selected_edge = TRUE) %>%
+  unmorph() 
+shortest <- shortest %>%
+  activate(nodes) %>%
+  mutate(selected_node = ifelse(is.na(selected_node), 1, 2)) %>%
+  activate(edges) %>%
+  mutate(selected_edge = ifelse(is.na(selected_edge), 1, 2)) %>%
+  arrange(selected_edge)
+shortest %>%
+  ggraph(layout = "kk") +
+  geom_edge_diagonal(aes(alpha = selected_edge), color = "gray") +
+  geom_node_text(aes(label = label, alpha = selected_node ), size = 2)
+
+```
+
+
+### Shortest path between 'Athens' and 'Copenhagen' when the weight is the number of total nodes visited.
+
+```{r}
+from <- which(capitals=='Athens')
+from
+to <- which(capitals=='Copenhagen')
+to
+shortest <- graph_df %>%
+  morph(to_shortest_path,from,to,weights= NULL)
+shortest <- shortest %>%
+  mutate(selected_node = TRUE) %>%
+  activate(edges) %>%
+  mutate(selected_edge = TRUE) %>%
+  unmorph() 
+shortest <- shortest %>%
+  activate(nodes) %>%
+  mutate(selected_node = ifelse(is.na(selected_node), 1, 2)) %>%
+  activate(edges) %>%
+  mutate(selected_edge = ifelse(is.na(selected_edge), 1, 2)) %>%
+  arrange(selected_edge)
+shortest %>%
+  ggraph(layout = "kk") +
+  geom_edge_diagonal(aes(alpha = selected_edge), color = "gray") +
+  geom_node_text(aes(label = label,  alpha = selected_node ), size = 2) 
+
+```
