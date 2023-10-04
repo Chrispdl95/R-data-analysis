@@ -1,5 +1,4 @@
 # R-data-analysis
 Analysis and Visualization with R for various datasets.
 
-The main goal of the repo is to understand in depth the most famous libraries in R language and visualize various datasets. The codes will be presented in format of R Markdown and R Shiny Dashboard.
-
+he primary objective of this repository is to gain a comprehensive understanding of the most renowned libraries in the R programming language and use them to visualize diverse datasets. The code will be showcased in the form of R Markdown and R Shiny Dashboards.
